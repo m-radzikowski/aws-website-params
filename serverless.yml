@@ -1,0 +1,88 @@
+service: websiteParams
+
+plugins:
+  - serverless-s3-deploy
+  - serverless-s3-remover
+  - serverless-scriptable-plugin
+
+custom:
+  project: betterdev
+  baseName: ${self:custom.project}-${self:provider.stage}-${self:service}
+
+  scriptHooks:
+    # retrieve parameters and build website
+    # this is done after the CF stack is being updated but before the S3 Deploy plugin triggers
+    after:aws:deploy:deploy:updateStack:
+      - generateConfigFile.js
+      - webpack --mode production --progress
+
+  assets:
+    auto: true
+    targets:
+      # copy website to S3 bucket on service deployment
+      - bucket: !Ref WebsiteBucket
+        files:
+          - source: dist
+            empty: true
+            globs: '**/*'
+
+  remover:
+    buckets:
+      # empty the website S3 bucket content when removing the service so the bucket can be removed
+      - ${cf:${self:custom.baseName}.WebsiteBucketName, ''}
+
+provider:
+  name: aws
+  stage: ${opt:stage, 'dev'}
+  stackName: ${self:custom.baseName}
+
+functions:
+  hello:
+    handler: handler.hello
+    events:
+      - http:
+          path: hello
+          cors: true
+          method: GET
+          integration: mock
+          request:
+            template:
+              application/json: '{"statusCode": 200}'
+          response:
+            template: '{"greeting": "Hello Parametrized Website!"}'
+            statusCodes:
+              200:
+                pattern: ''
+
+# the "hello" function has only mock API events and no actual code, minimize the size of the Lambda deployment package
+package:
+  exclude:
+    - ./**
+  include:
+    - README.md
+
+resources:
+  Resources:
+
+    WebsiteBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        WebsiteConfiguration:
+          IndexDocument: index.html
+
+    WebsiteBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: !Ref WebsiteBucket
+        PolicyDocument:
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+              Resource: !Sub 'arn:aws:s3:::${WebsiteBucket}/*'
+              Principal: '*'
+
+  # save bucket name in outputs so it can be found when removing the service
+  Outputs:
+    WebsiteBucketName:
+      Value: !Ref WebsiteBucket

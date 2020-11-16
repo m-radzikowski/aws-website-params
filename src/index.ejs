@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Parameters example</title>
+    <style>
+        span {
+            font-weight: bold;
+        }
+        code {
+            background: #eee;
+        }
+    </style>
+</head>
+<body>
+
+<p>
+    This is an example website with per-environment parameters.<br/>
+    Parameters are generated after stack deployment and bundled with website resources.
+</p>
+
+<p>
+    Environment (stage) is: <span id="env"></span>
+</p>
+
+<p>
+    API Gateway base URL is: <span id="apiurl"></span>
+</p>
+
+<p>
+    GET request to API Gateway <code>/hello</code> endpoint returns response: <code id="response"></code>
+</p>
+
+</body>
+</html>
